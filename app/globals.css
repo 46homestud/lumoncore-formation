@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --canvas: #000000;
+  --ink: #ffffff;
+  --ink-muted: rgba(255, 255, 255, 0.62);
+  --glow: rgba(220, 226, 240, 0.35);
+}
+
+html, body { height: 100%; }
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans), -apple-system, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* Scène plein écran */
+.stage {
+  position: relative;
+  height: 100svh;
+  width: 100%;
+  overflow: hidden;
+  /* Fond de secours si WebGL indisponible */
+  background: #000;
+}
+
+/* Contenu centré par-dessus le shader */
+.content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 0 16px;
+  pointer-events: none; /* le shader réagit partout, sauf sur le bouton */
+}
+
+/* Logo : petit mot-symbole en haut à gauche, apparition douce dès le chargement */
+.topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  padding: 28px 32px;
+  pointer-events: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+/* Lien « Work » : gris discret, s'éclaire au survol */
+.nav-link {
+  pointer-events: auto;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.45);
+  text-decoration: none;
+  transition: color 0.3s ease;
+  animation: brand-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+}
+.nav-link:hover { color: #fff; }
+.nav-link:focus-visible { outline: 1px solid #fff; outline-offset: 4px; }
+.brand-mark {
+  display: inline-block;
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #fff;
+  animation: brand-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+}
+@keyframes brand-in {
+  from { opacity: 0; transform: translateY(-6px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@media (max-width: 640px) {
+  .topbar { padding: 20px 16px; }
+}
+
+/* Titre central : le slogan devient le message principal */
+.headline {
+  font-size: clamp(16px, 1.45vw, 21px);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+  color: #fff;
+}
+
+/* Bouton unique : chrome poli + reflet au survol */
+/* Bouton « halo pill » (recette MotionSites) : seul objet blanc de l'écran, texte qui roule, flèche qui pivote */
+.cta-wrap { pointer-events: none; margin-top: 28px; display: flex; flex-direction: column; align-items: center; }
+.price-note { display: none; }
+
+.cta {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: 50px;
+  padding: 6px 6px 6px 24px;
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 20px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 22px rgba(255, 255, 255, 0.32), 0 0 44px rgba(255, 255, 255, 0.12);
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+}
+.cta:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 30px rgba(255, 255, 255, 0.45), 0 0 64px rgba(255, 255, 255, 0.18);
+}
+.cta:active { transform: scale(0.98); }
+.cta:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+/* Fenêtre de 20 px : la pile de deux libellés glisse de -50 % au survol */
+.cta-roll { display: block; height: 20px; overflow: hidden; }
+.cta-roll-inner { display: flex; flex-direction: column; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.cta-roll-inner > span { display: block; height: 20px; white-space: nowrap; }
+.cta:hover .cta-roll-inner, .cta:focus-visible .cta-roll-inner { transform: translateY(-50%); }
+/* Prix discret, séparé par un filet */
+.cta-price { color: rgba(0, 0, 0, 0.45); padding-left: 14px; border-left: 1px solid rgba(0, 0, 0, 0.12); }
+/* Pastille noire avec flèche : → devient ↗ au survol */
+.cta-chip {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 999px;
+  background: #000;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.cta-chip svg { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.cta:hover .cta-chip svg, .cta:focus-visible .cta-chip svg { transform: rotate(-45deg); }
+
+/* Calque 3D de la gélule (fond noir pur) */
+.pill-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* Le doigt pilote l'inclinaison de la gélule sans que Safari ne l'interrompe par un geste de défilement */
+  touch-action: none;
+}
+.content { z-index: 2; }
+
+/* Le contenu n'apparaît qu'après l'explosion */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px) scale(0.98);
+  filter: blur(8px);
+  transition: opacity 1.1s cubic-bezier(0.2, 0.7, 0.2, 1),
+              transform 1.1s cubic-bezier(0.2, 0.7, 0.2, 1),
+              filter 1.1s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.is-revealed .reveal { opacity: 1; transform: none; filter: none; }
+.cta-wrap.reveal .cta { pointer-events: none; }
+.is-revealed .cta-wrap.reveal .cta { pointer-events: auto; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { transition: none; }
+  .brand-mark, .nav-link { animation: none; }
+  .cta, .cta-roll-inner, .cta-chip svg { transition: none; }
+}
+
+/* Pages simples (remerciement, CGV, mentions légales) : défilement autorisé */
+.simple-page { min-height: 100svh; background: #000; color: #fff; overflow-y: auto; height: 100svh; }
+.simple-content { max-width: 640px; margin: 0 auto; padding: 22vh 16px 80px; text-align: center; }
+.simple-text { margin: 16px 0 32px; color: rgba(255, 255, 255, 0.6); font-size: 15px; line-height: 1.6; font-weight: 300; }
+.simple-cta { padding: 8px 28px; }
+.legal { text-align: left; padding-top: 120px; }
+.legal h1 { font-size: 24px; font-weight: 500; letter-spacing: -0.03em; margin-bottom: 32px; }
+.legal h2 { font-size: 15px; font-weight: 500; margin: 32px 0 8px; }
+.legal p, .legal li { color: rgba(255, 255, 255, 0.65); font-size: 14px; line-height: 1.7; font-weight: 300; }
+.legal ul { padding-left: 18px; list-style: disc; }
+.legal a { color: #fff; }
+.footer-links { position: absolute; bottom: max(20px, env(safe-area-inset-bottom)); left: 0; right: 0; z-index: 3; display: flex; justify-content: center; gap: 20px; font-size: 11px; }
+.footer-links a { color: rgba(255, 255, 255, 0.35); text-decoration: none; transition: color 0.3s ease; }
+.footer-links a:hover { color: rgba(255, 255, 255, 0.8); }
+/* Bouton de langue : même style que les liens du bas */
+.lang-switch { background: none; border: 0; padding: 0; font: inherit; color: rgba(255, 255, 255, 0.35); cursor: pointer; transition: color 0.3s ease; }
+.lang-switch:hover { color: rgba(255, 255, 255, 0.8); }
+
+/* Téléphone (recommandations skill) : hiérarchie remise à l'endroit — la gélule domine, le bouton est fin et discret.
+   Le bouton paraît petit (34px) mais sa zone de toucher reste ≥ 44px grâce à un ::before invisible. */
+@media (max-width: 640px) {
+  .headline { font-size: 13px; font-weight: 400; letter-spacing: -0.02em; color: rgba(255, 255, 255, 0.9); }
+  .cta-wrap { margin-top: 12px; }
+  .cta {
+    position: relative;
+    height: 34px;
+    gap: 8px;
+    padding: 0 13px;
+    font-size: 11.5px;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 14px rgba(255, 255, 255, 0.18);
+  }
+  .cta::before { content: ""; position: absolute; inset: -6px -4px; }
+  .cta-price, .cta-chip { display: none; }
+  .price-note { display: block; margin-top: 9px; font-size: 11px; letter-spacing: 0.02em; color: rgba(255, 255, 255, 0.5); }
+  .headline { max-width: 128px; line-height: 1.25; }
+}
